@@ -4,6 +4,14 @@
 
 ![Окно VidSqueeze](docs/screenshot.png)
 
+## Скачать и сразу пользоваться
+
+1. Скачайте [VidSqueeze-win64.zip](https://github.com/DomenicoCano/VidSqueeze/releases/latest/download/VidSqueeze-win64.zip) из раздела [Releases](https://github.com/DomenicoCano/VidSqueeze/releases).
+2. Распакуйте архив в любую папку.
+3. Запустите `VidSqueeze\VidSqueeze.exe`.
+
+Ничего устанавливать не нужно: Python и FFmpeg уже внутри.
+
 ## Возможности
 
 - **Три кодека:** VP9 (`.webm`), H.265 (`.mp4`) и AV1 (`.webm`).

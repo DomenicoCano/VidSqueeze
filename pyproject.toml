@@ -1,0 +1,18 @@
+﻿[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vidsqueeze"
+version = "0.1.0"
+description = "Сжатие видео через FFmpeg (VP9 / H.265 / AV1) с пакетной обработкой и сравнением качества"
+requires-python = ">=3.10"
+dependencies = ["imageio-ffmpeg>=0.5", "tkinterdnd2>=0.3"]
+
+[project.scripts]
+vidsqueeze = "vidsqueeze.cli:main"
+vidsqueeze-gui = "vidsqueeze.gui:main"
+
+[tool.setuptools]
+packages = ["vidsqueeze"]
+

@@ -13,7 +13,8 @@ VidSqueeze (пакет `vidsqueeze`) — Windows-программа для сж�
 ```powershell
 .\.venv\Scripts\python -m vidsqueeze.gui            # окно (то же, что VidSqueeze.pyw)
 .\.venv\Scripts\python -m vidsqueeze compress f.mp4  # CLI: compress | compare | info
-.\.venv\Scripts\python -m PyInstaller --noconfirm --windowed --name VidSqueeze `
+.\.venv\Scripts\python -m PyInstaller --noconfirm --clean --windowed --name VidSqueeze `
+  --icon "$PWDidsqueezessets\icon.ico" --add-data "$PWDidsqueezessets;vidsqueezessets" `
   --collect-all imageio_ffmpeg --collect-all tkinterdnd2 --distpath dist --workpath build --specpath build VidSqueeze.pyw
 ```
 
@@ -40,6 +41,8 @@ VidSqueeze (пакет `vidsqueeze`) — Windows-программа для сж�
 - [vidsqueeze/cli.py](vidsqueeze/cli.py) — argparse-подкоманды `compress`, `compare`, `info`; здесь же `human()` (формат размеров), его импортирует GUI.
 - [vidsqueeze/gui.py](vidsqueeze/gui.py) — окно `App` и диалог `CompareWindow`. Тяжёлая работа (сжатие, оценка размера, определение GPU) идёт в daemon-потоках, которые кладут события-кортежи (`start`/`progress`/`status`/`done`/`output`/`log`/`finished`/`gpu`/`est`/`est_err`/`est_done`) в `queue.Queue`; главный поток разбирает их в `_poll()` через `after`. Tk-виджеты из потоков не трогать. Перетаскивание файлов — через `tkinterdnd2` (необязательная зависимость, есть запасной вариант без неё). Настройки хранятся в `%APPDATA%\vidsqueeze\settings.json`. Пресеты качества (`PRESETS`) задают CRF по кодекам; ручное изменение CRF переключает пресет на «Свой вариант». Оценки размера кэшируются по ключу (файл, mtime, кодек, CRF, GPU, fast, 10-бит, fps, звук), поэтому устаревших оценок не бывает; изменение любой настройки запускает пересчёт с задержкой 0,9 с (`_schedule_estimate`), старый расчёт отменяется. Во время сжатия оценка не идёт.
 - [VidSqueeze.pyw](VidSqueeze.pyw) — точка входа без консоли и для PyInstaller.
+- [vidsqueeze/assets/](vidsqueeze/assets/) — значок программы (`icon.ico` 16–256 px, `icon.png`). Пути в `--icon`/`--add-data` абсолютные, потому что `--specpath build` меняет базу относительных путей. Окно ставит значок через `iconbitmap(default=...)`, `main()` задаёт AppUserModelID, чтобы на панели задач не было значка Python.
+- Релизы: `vX.Y.Z` на GitHub с архивом `VidSqueeze-win64.zip` (внутри папка `VidSqueeze`); README ссылается на `releases/latest/download/VidSqueeze-win64.zip`, поэтому имя архива менять нельзя. Версия — в `vidsqueeze/__init__.py` и `pyproject.toml`. CLI `gh` не установлен.
 
 ## Дизайн GUI
 

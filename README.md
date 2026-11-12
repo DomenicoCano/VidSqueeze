@@ -43,7 +43,8 @@ python -m venv .venv
 **Готовая сборка `VidSqueeze.exe`** через PyInstaller:
 
 ```powershell
-.\.venv\Scripts\python -m PyInstaller --noconfirm --windowed --name VidSqueeze `
+.\.venv\Scripts\python -m PyInstaller --noconfirm --clean --windowed --name VidSqueeze `
+  --icon "$PWDidsqueezessets\icon.ico" --add-data "$PWDidsqueezessets;vidsqueezessets" `
   --collect-all imageio_ffmpeg --collect-all tkinterdnd2 --distpath dist --workpath build --specpath build VidSqueeze.pyw
 ```
 

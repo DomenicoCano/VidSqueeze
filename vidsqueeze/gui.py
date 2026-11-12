@@ -29,6 +29,7 @@ except Exception:  # перетаскивание — приятный бону�
     HAVE_DND = False
 
 APP_NAME = "VidSqueeze"
+ICON = Path(__file__).with_name("assets") / "icon.ico"
 PRESETS = {
     "Максимальное качество": {"vp9": 34, "h265": 22, "av1": 34},
     "Баланс (рекомендуется)": {"vp9": 42, "h265": 30, "av1": 42},
@@ -75,6 +76,11 @@ class App(_Base):
     def __init__(self) -> None:
         super().__init__()
         self.title(f"{APP_NAME} — сжатие видео")
+        if ICON.is_file():
+            try:
+                self.iconbitmap(default=str(ICON))   # default= — и для всех дочерних окон и диалогов
+            except tk.TclError:
+                pass
         self.minsize(1020, 660)
         self.geometry("1200x800")
 
@@ -1061,6 +1067,8 @@ def main() -> int:
         try:
             import ctypes
             ctypes.windll.shcore.SetProcessDpiAwareness(1)
+            # своя группа на панели задач — иначе при запуске через .pyw там значок Python
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("VidSqueeze.App")
         except Exception:
             pass
     try:

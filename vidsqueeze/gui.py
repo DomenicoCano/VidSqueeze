@@ -690,17 +690,22 @@ class App(_Base):
         opts = self._collect_options()
         if opts is None:
             return
+        files = [(iid, p) for iid, p in self.items.items() if iid not in self.actual]
+        if not files:
+            if not messagebox.askyesno(APP_NAME, "Все видео в списке уже сжаты. Сжать их ещё раз?\n"
+                                                 "Новые файлы получат номер в имени, старые останутся."):
+                return
+            self.actual.clear()
+            files = list(self.items.items())
         self._stop_estimate()
-        for iid in self.items:
+        for iid, _p in files:
             self.tree.item(iid, tags=())
             self.tree.set(iid, "status", "Ожидает")
-        self.actual.clear()
         self.cancel = threading.Event()
         self.bar["value"] = 0
         self.b_open.configure(state="disabled")
         self._set_busy(True)
         self.v_status.set("Начинаю…")
-        files = list(self.items.items())
         self.worker = threading.Thread(target=self._work, args=(files, opts, self.cancel), daemon=True)
         self.worker.start()
 
@@ -721,7 +726,8 @@ class App(_Base):
                 q.put(("progress", iid, (i + ff) / n, ff, CODECS[key].label))
 
             try:
-                results = compress_file(path, opts, on_progress=cb, log=lambda m: q.put(("log", m)), cancel=cancel)
+                results = compress_file(path, opts, on_progress=cb, cancel=cancel,
+                                        log=lambda m, name=path.name: q.put(("log", f"{name}: {m.strip()}")))
             except Cancelled:
                 q.put(("status", iid, "Отменено", ""))
                 cancelled = True
@@ -736,6 +742,9 @@ class App(_Base):
             for r in results:
                 pct = (1 - r.size / src) * 100 if src else 0
                 parts.append(f"{CODECS[r.codec].label} {human(r.size)} ({'−' if pct >= 0 else '+'}{abs(pct):.0f}%)")
+                if r.size >= src:
+                    q.put(("log", f"{path.name}: {CODECS[r.codec].label} получился не меньше исходника — видео уже "
+                                  f"было хорошо сжато. Файл {r.path.name} можно удалить или взять CRF побольше."))
             q.put(("done", iid, "  ·  ".join(parts)))
             q.put(("output", results[0].path))
             tot_in += src

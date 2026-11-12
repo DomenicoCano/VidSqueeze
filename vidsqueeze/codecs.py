@@ -75,8 +75,11 @@ def video_args(
                 *deadline, *thr, "-pix_fmt", pix_fmt]
     if key == "h265":
         preset = "medium" if fast else "veryslow"
+        # у libx265 «-threads» задаёт число параллельно кодируемых кадров и нагрузку не ограничивает
+        # (проверено: с -threads 2 x265 всё равно занимает ~7 ядер); размер пула задаёт только pools
+        pools = ["-x265-params", f"pools={threads}"] if threads > 0 else []
         return ["-c:v", "libx265", "-crf", str(crf), "-preset", preset, "-tag:v", "hvc1",
-                "-movflags", "+faststart", *thr, "-pix_fmt", pix_fmt]
+                "-movflags", "+faststart", *pools, "-pix_fmt", pix_fmt]
     if key == "av1":
         if "libsvtav1" in available_encoders():
             return ["-c:v", "libsvtav1", "-b:v", "0", "-crf", str(crf),

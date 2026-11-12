@@ -71,6 +71,7 @@ class MediaInfo:
     pix_fmt: str = ""
     audio_streams: int = 0
     size: int = 0
+    hdr: bool = False          # HLG / HDR10 (PQ): кодировать в 10 бит, иначе на градиентах полосы
     audio_codecs: list[str] = field(default_factory=list)
 
 
@@ -99,6 +100,7 @@ def probe(path: Path) -> MediaInfo:
         if v and not info.vcodec:
             info.vcodec = v[1]
             rest = v[2]
+            info.hdr = bool(re.search(r"smpte2084|arib-std-b67", rest))
             # убираем скобки, чтобы "(High)" и "[SAR 1:1 DAR 16:9]" не мешали
             clean = re.sub(r"\([^)]*\)", "", rest)
             d = _DIMS.search(clean + " ")

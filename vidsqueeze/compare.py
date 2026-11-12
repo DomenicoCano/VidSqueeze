@@ -60,17 +60,23 @@ def recommend(items: list[Candidate], target_ssim: float) -> Optional[Candidate]
     return pick
 
 
-def _reference_filter(duration: float, vf: Optional[str]) -> tuple[str, float]:
+def reference_args(src: Path, duration: float, vf: Optional[str]) -> tuple[list[str], float]:
+    """Аргументы ffmpeg (входы + фильтр) для эталона из трёх 1-секундных фрагментов и его длительность.
+
+    Каждый фрагмент — отдельный вход с `-ss` перед `-i`: ffmpeg прыгает к ближайшему ключевому кадру
+    и не декодирует всё до нужного места. С фильтром trim эталон для двухчасового фильма собирался
+    больше минуты, так как декодировалось всё видео от начала до 75%."""
     if duration <= CLIP_SECONDS * len(CLIP_POINTS):
         chain = "[0:v]" + (vf + "," if vf else "") + "setpts=PTS-STARTPTS[out]"
-        return chain, duration
-    segs, labels = [], ""
+        return ["-i", str(src), "-filter_complex", chain, "-map", "[out]"], duration
+    args, chains, labels = [], [], ""
     for i, p in enumerate(CLIP_POINTS):
         start = max(0.0, min(duration * p, duration - CLIP_SECONDS))
-        segs.append(f"[0:v]trim=start={start:.3f}:duration={CLIP_SECONDS},setpts=PTS-STARTPTS[v{i}]")
+        args += ["-ss", f"{start:.3f}", "-t", f"{CLIP_SECONDS}", "-i", str(src)]
+        chains.append(f"[{i}:v]setpts=PTS-STARTPTS[v{i}]")
         labels += f"[v{i}]"
     tail = f"{labels}concat=n={len(CLIP_POINTS)}:v=1:a=0" + (f",{vf}" if vf else "") + "[out]"
-    return ";".join(segs + [tail]), CLIP_SECONDS * len(CLIP_POINTS)
+    return args + ["-filter_complex", ";".join(chains + [tail]), "-map", "[out]"], CLIP_SECONDS * len(CLIP_POINTS)
 
 
 def compare_file(
@@ -82,20 +88,19 @@ def compare_file(
     cancel: Optional[threading.Event] = None,
 ) -> tuple[list[Candidate], float]:
     info = probe(src)
-    ref_filter, ref_dur = _reference_filter(info.duration, video_filter(info, opts.max_fps))
+    ref_args, ref_dur = reference_args(src, info.duration, video_filter(info, opts.max_fps))
     items = [Candidate(c, crf) for c, crf in candidates]
     with tempfile.TemporaryDirectory(prefix="vidsqueeze-", ignore_cleanup_errors=True) as tmp:
         tmp_dir = Path(tmp)
         ref = tmp_dir / "reference.mkv"
         log("Готовлю эталон (FFV1, без потерь)…")
-        run(["-i", str(src), "-filter_complex", ref_filter, "-map", "[out]", "-an",
-             "-c:v", "ffv1", str(ref)], cancel=cancel)
+        run([*ref_args, "-an", "-c:v", "ffv1", str(ref)], cancel=cancel)
         for n, cand in enumerate(items, 1):
             if cancel is not None and cancel.is_set():
                 raise Cancelled()
             log(f"[{n}/{len(items)}] {CODECS[cand.codec].label} CRF {cand.crf}…")
             out = tmp_dir / f"c{n}{CODECS[cand.codec].ext}"
-            run(["-i", str(ref), *codec_args(opts, cand.codec, cand.crf), "-an", str(out)], cancel=cancel)
+            run(["-i", str(ref), *codec_args(opts, cand.codec, cand.crf, hdr=info.hdr), "-an", str(out)], cancel=cancel)
             cand.preview_bytes = out.stat().st_size
             err = run_capture(["-i", str(out), "-i", str(ref), "-lavfi", "ssim", "-f", "null", "-"])
             m = re.search(r"SSIM.*?All:([\d.]+)", err, re.S)
